@@ -6,10 +6,53 @@ import * as React from 'react'
 // fetchPokemon: the function we call to get the pokemon info
 // PokemonInfoFallback: the thing we show while we're loading the pokemon info
 // PokemonDataView: the stuff we use to display the pokemon info
-import {PokemonForm} from '../pokemon'
+import {PokemonForm, fetchPokemon, PokemonInfoFallback, PokemonDataView} from '../pokemon'
+import { ErrorBoundary } from 'react-error-boundary';
 
+
+function Fallback({error, resetErrorBoundary}) {
+    return(
+      <div role="alert" > 
+      <p> Something went wrong.</p>
+        {error.message} 
+        <button> Try again </button>
+      </div>
+    )
+}
 function PokemonInfo({pokemonName}) {
   // 🐨 Have state for the pokemon (null)
+
+  const [state, setState] = React.useState({
+    pokemon: null, 
+    error: null, 
+    status: 'idle', 
+  })
+
+  const {pokemon, error, status} = state; 
+
+
+   React.useEffect(() => {
+    if (pokemonName) {
+      setState({
+        status: 'pending'
+      })
+      fetchPokemon(pokemonName).then(
+        pokemon => {
+          setState({
+            pokemon,
+            status: 'resolved',
+          })
+        },
+        error => {
+            setState({
+              error,
+              status: 'rejected'
+            })
+        },
+      )}
+    }, [pokemonName])
+
+
   // 🐨 use React.useEffect where the callback should be called whenever the
   // pokemon name changes.
   // 💰 DON'T FORGET THE DEPENDENCIES ARRAY!
@@ -25,8 +68,21 @@ function PokemonInfo({pokemonName}) {
   //   2. pokemonName but no pokemon: <PokemonInfoFallback name={pokemonName} />
   //   3. pokemon: <PokemonDataView pokemon={pokemon} />
 
-  // 💣 remove this
-  return 'TODO'
+    switch(status){
+      case 'rejected': 
+        throw error; 
+      case 'idle': 
+        return 'Submit a pokemon'
+        break;
+      case 'pending':
+        if (!pokemon) {
+          return <PokemonInfoFallback name = {pokemonName} />
+        }
+        break;
+      default: 
+          return <PokemonDataView pokemon = {state.pokemon}/>
+      
+  }
 }
 
 function App() {
@@ -41,7 +97,9 @@ function App() {
       <PokemonForm pokemonName={pokemonName} onSubmit={handleSubmit} />
       <hr />
       <div className="pokemon-info">
-        <PokemonInfo pokemonName={pokemonName} />
+        <ErrorBoundary key={pokemonName} FallbackComponent={Fallback}> 
+          <PokemonInfo pokemonName={pokemonName} />
+        </ErrorBoundary>
       </div>
     </div>
   )
